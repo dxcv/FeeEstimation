@@ -3,7 +3,6 @@
 import pandas as pd
 import os
 import re
-#import numpy as np
 
 def ZCEDataProcess(excelFile):
     df_tradeData=pd.read_excel(excelFile+os.path.sep+'FutureDataDaily.xls',skiprows=[0])
@@ -22,14 +21,6 @@ def ZCEDataProcess(excelFile):
     df_volume.loc[:,'estiFee']=df_volume.apply(lambda x: x.loc[u'开仓']*df_clearParams.loc[x.name,u'交易手续费']+x.loc[u'平仓']*df_clearParams.loc[x.name,u'估计平仓费率'],axis=1)
     
     return df_volume
-
-
-
-path=R'C:\Users\tjiang\Desktop\work\calcfee\ZCE\feeEstimation'
-df0=ZCEDataProcess(path)
-df0['Product']=df0.index.map(lambda x: x[:-3])
-#df_fee=df.groupby(by='Product').sum()
-df0.to_csv(path+os.path.sep+'ZCEEstiFee_20190624.csv')
 
 
 def DCEDataProcess(excelFile):
@@ -60,9 +51,6 @@ def DCEDataProcess(excelFile):
     df_tradeData.rename(columns={u'成交额':u'成交额（万元）'},inplace=True)
     return df_tradeData
 
-excelFile=r'C:\Users\tjiang\Desktop\work\calcfee\FeeEsti\DCE'
-df=DCEDataProcess(excelFile)
-df.to_csv(excelFile+r'\DCEFeeEsti_20190703.csv')
 
 def SHFEDataProcess(csvFile):
     product_dict={u'铜':'cu',
@@ -137,6 +125,10 @@ def SHFEDataProcess(csvFile):
     
     return df_tradeData
 
-csvFile=r'C:\Users\tjiang\Desktop\work\calcfee\FeeEsti\SHFE'
-df1=SHFEDataProcess(csvFile)
-df1.to_csv(csvFile+r'\SHFEFeeEsti_20190703.csv')
+if __name__=='__main__':
+    shfe_csvFile=r'shfe_path'
+    dce_csvFile=r'dce_path'
+    zce_csvFile=r'zce_path'
+    shfe=SHFEDataProcess(shfe_csvFile)
+    dce=DCEDataProcess(dce_csvFile)
+    zce=ZCEDataProcess(csvFile)
