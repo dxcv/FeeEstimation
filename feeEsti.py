@@ -11,7 +11,7 @@ def ZCEDataProcess(excelFile):
     df_tradeData[[u'成交量(手)',u'增减量']]=df_tradeData[[u'成交量(手)',u'增减量']].applymap(lambda x: int(x.replace(',','')))
     df_tradeData[u'开仓']=(df_tradeData[u'成交量(手)']+df_tradeData[u'增减量'])/2
     df_tradeData[u'平仓']=(df_tradeData[u'成交量(手)']-df_tradeData[u'增减量'])/2
-    df_volume=df_tradeData[[u'开仓',u'平仓']]
+    df_volume=df_tradeData[[u'开仓',u'平仓',u'成交量(手)']]
     
     df_clearParams=pd.read_excel(excelFile+os.path.sep+'FutureDataClearParams.xls',skiprows=[0])
     df_clearParams.set_index(keys=u'合约代码',inplace=True)
@@ -33,7 +33,7 @@ def DCEDataProcess(excelFile):
     df_tradeData[u'开仓']=(df_tradeData[u'成交量']+df_tradeData[u'持仓量变化'])/2
     df_tradeData[u'平仓']=(df_tradeData[u'成交量']-df_tradeData[u'持仓量变化'])/2
     df_tradeData[u'平仓比例']=df_tradeData.apply(lambda x:0 if x[u'平仓']+x[u'开仓']==0 else x[u'平仓']/(x[u'平仓']+x[u'开仓']),axis=1)
-    df_tradeData=df_tradeData[[u'开仓',u'平仓',u'成交额',u'平仓比例']]
+    df_tradeData=df_tradeData[[u'开仓',u'平仓',u'成交量',u'成交额',u'平仓比例']]
     
     df_clearParams=pd.read_excel(excelFile+os.path.sep+'ClearParams_20190703.xls')
     df_clearParams[u'月份']=df_clearParams[u'合约代码'].map(lambda x:str(x)[-4:])
@@ -53,25 +53,25 @@ def DCEDataProcess(excelFile):
 
 
 def SHFEDataProcess(csvFile):
-    product_dict={u'铜':'cu',
-                  u'铝':'al',
-                  u'锌':'zn',
-                  u'铅':'pb',
-                  u'镍':'ni',
-                  u'锡':'sn',
-                  u'纸浆':'sp',
-                  u'黄金':'au',
-                  u'白银':'ag',
-                  u'螺纹钢':'rb',
-                  u'线材':'wr',
-                  u'热轧卷板':'hc',
-                  u'原油':'sc',
-                  u'燃料油':'fu',
-                  u'石油沥青':'bu',
-                  u'天然橡胶':'ru'
-                  }
     
-    dic=dict(zip(product_dict.values(),product_dict.keys()))
+    dic={'cu': [u'铜',5],
+         'al': [u'铝',5],
+         'zn': [u'锌',5],
+         'pb': [u'铅',5],
+         'ni': [u'镍',1],
+         'sn': [u'锡',1],
+         'sp': [u'纸浆',10],
+         'au': [u'黄金',1000],
+         'ag': [u'白银',15],
+         'rb': [u'螺纹钢',10],
+         'wr': [u'线材',10],
+         'hc': [u'热轧卷板',10],
+         'sc': [u'原油',1000],
+         'fu': [u'燃料油',10],
+         'bu': [u'石油沥青',10],
+         'ru': [u'天然橡胶',10]
+         }
+    
     file=csvFile+os.path.sep+r'20190703_Daily.csv'
     l_df=[]
     with open(file) as f:
@@ -102,20 +102,22 @@ def SHFEDataProcess(csvFile):
     
     df_tradeData=pd.concat(l_df)
     
+    dic1={x[0]:x[1] for x in dic.values()}
+    df_tradeData[u'乘数']=df_tradeData[u'商品名称'].map(lambda x:dic1[x] )
     df_tradeData.set_index(keys=[u'商品名称',u'交割月份'],inplace=True)
     
-    df_tradeData[u'成交额']=df_tradeData[u'成交手']*df_tradeData[u'结算参考价']
+    df_tradeData[u'成交额']=df_tradeData[u'成交手']*df_tradeData[u'结算参考价']*df_tradeData[u'乘数']
     df_tradeData[u'开仓']=(df_tradeData[u'成交手']+df_tradeData[u'变化'])/2
     df_tradeData[u'平仓']=(df_tradeData[u'成交手']-df_tradeData[u'变化'])/2
     df_tradeData[u'平仓比例']=df_tradeData.apply(lambda x:0 if x[u'平仓']+x[u'开仓']==0 else x[u'平仓']/(x[u'平仓']+x[u'开仓']),axis=1)
-    df_tradeData=df_tradeData[[u'开仓',u'平仓',u'成交额',u'平仓比例']]
+    df_tradeData=df_tradeData[[u'开仓',u'平仓',u'成交手',u'成交额',u'平仓比例']]
     
     df_clearParams=pd.read_csv(csvFile+os.path.sep+'ClearParams.csv',skiprows=[0,1,2],encoding='gb2312')
     unnamed_columns=[x for x in df_clearParams.columns if 'Unnamed' in x]
     df_clearParams.drop(columns=unnamed_columns,inplace=True)
     df_clearParams.columns=[x.strip() for x in df_clearParams.columns]
     df_clearParams[u'月份']=df_clearParams[u'合约代码'].map(lambda x:str(x)[-4:])
-    df_clearParams[u'商品名称']=df_clearParams[u'合约代码'].map(lambda x: dic[x[:-4]])
+    df_clearParams[u'商品名称']=df_clearParams[u'合约代码'].map(lambda x: dic[x[:-4]][0])
     df_clearParams.set_index(keys=[u'商品名称',u'月份'],inplace=True)
     
     df_tradeData.loc[:,'estiFee']=df_tradeData.apply(lambda x:x.loc[u'成交额']*(1-x.loc[u'平仓比例'])*df_clearParams.loc[x.name,u'交易手续费率(‰)']/1000 
